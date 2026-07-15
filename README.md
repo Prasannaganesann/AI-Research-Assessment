@@ -4,7 +4,33 @@ An interview-ready, production-grade Multi-Agent System (MAS) built on **LangGra
 
 This system ingests real-time shipment delay alerts (e.g. port closures, weather disruptions), translates them into structured plans, researches carrier alternatives, validates them against physical and business constraints, and executes the optimal reroute—complete with stakeholder notification and structured incident reports.
 
-Additionally, this repository contains a **rigorous trajectory-based evaluation framework** comparing the capabilities, reasoning, and costs of closed-source (**GPT-4o**) vs. open-source (**Qwen3-8b** via Groq) LLMs.
+Additionally, this repository contains a **rigorous trajectory-based evaluation framework** comparing the capabilities, reasoning, and costs of closed-source (**GPT-4o**) vs. open-source (**Qwen3-8B** via Groq) LLMs.
+
+---
+
+## 🌟 Key Features
+
+- **LangGraph StateGraph**: Deterministic, stateful multi-agent orchestration managing state transitions, retries, and human-in-the-loop escalations.
+- **Multi-Agent Workflow**: Four specialized, decoupled agents (Planner, Research, Decision, Execution) operating on a shared, strongly typed graph state.
+- **Trajectory-Based Evaluation**: Real-time evaluation grading reasoning quality, tool-calling sequences, self-healing error recovery, and output effectiveness.
+- **GPT-4o vs. Qwen3-8B Benchmarks**: Out-of-the-box comparative analysis across multiple scenarios measuring cost, latency, and agent behavior.
+- **Structured Logging**: Production-grade telemetry utilizing `structlog` for machine-parseable JSON or clean console logging.
+- **Exponential Backoff**: Resilient tool execution utilizing `tenacity` retry loops with random jitter.
+- **Comprehensive Test Suite**: Fast, mocked unit and integration tests achieving **80% code coverage** via `pytest`.
+- **Benchmark Report Generation**: Automated markdown report compilation and twin-axis matplotlib chart generation.
+
+---
+
+## 📊 Project Summary
+
+| Dimension | Specification |
+|---|---|
+| **Orchestration Framework** | LangGraph (LangChain v0.3+) |
+| **Agent Nodes** | 4 (Planner, Research, Decision, Execution) |
+| **Logistics Tools** | 7 (carrier lists, capacity checks, ETA calculation, cost quotes, routing validation, notifications, report filing) |
+| **Models Evaluated** | GPT-4o (OpenAI), Qwen3-8B (Groq) |
+| **Test Suite** | 36 unit/integration tests (`pytest`) |
+| **Code Coverage** | **80%** |
 
 ---
 
@@ -65,54 +91,53 @@ The system is designed around **LangGraph's StateGraph** to guarantee structured
 
 ### Agent Responsibilities & State Interfacing
 
-All agents inherit from a common [BaseAgent](file:///D:/Triluxo%20Technologies/autonomous-logistics-agent/agents/base_agent.py) abstract class, guaranteeing they:
+All agents inherit from a common [BaseAgent](agents/base_agent.py) abstract class, guaranteeing they:
 - Operate **only** on the shared `GraphState`.
 - Capture a structured `TrajectorySnapshot` detailing token count, latency, costs, reasoning, and tool calls.
 - Emit structured JSON-ready logs at every step.
 
 | Agent | Module | Input State | Output State | Tool Registry |
 |---|---|---|---|---|
-| **Planner** | [planner_agent.py](file:///D:/Triluxo%20Technologies/autonomous-logistics-agent/agents/planner_agent.py) | `telemetry_alert` | `rerouting_plan`, `rerouting_constraints` | *None (zero-tool reasoning)* |
-| **Research** | [research_agent.py](file:///D:/Triluxo%20Technologies/autonomous-logistics-agent/agents/research_agent.py) | `rerouting_constraints` | `carrier_options` | `list_available_carriers`, `lookup_carrier_capacity`, `calculate_route_eta`, `estimate_reroute_cost` |
-| **Decision** | [decision_agent.py](file:///D:/Triluxo%20Technologies/autonomous-logistics-agent/agents/decision_agent.py) | `carrier_options`, `rerouting_constraints` | `selected_route`, `should_escalate` | `validate_route_constraints` |
-| **Execution** | [execution_agent.py](file:///D:/Triluxo%20Technologies/autonomous-logistics-agent/agents/execution_agent.py) | `selected_route`, `telemetry_alert` | `execution_result`, `execution_status` | `send_reroute_notification`, `generate_execution_report` |
+| **Planner** | [planner_agent.py](agents/planner_agent.py) | `telemetry_alert` | `rerouting_plan`, `rerouting_constraints` | *None (zero-tool reasoning)* |
+| **Research** | [research_agent.py](agents/research_agent.py) | `rerouting_constraints` | `carrier_options` | `list_available_carriers`, `lookup_carrier_capacity`, `calculate_route_eta`, `estimate_reroute_cost` |
+| **Decision** | [decision_agent.py](agents/decision_agent.py) | `carrier_options`, `rerouting_constraints` | `selected_route`, `should_escalate` | `validate_route_constraints` |
+| **Execution** | [execution_agent.py](agents/execution_agent.py) | `selected_route`, `telemetry_alert` | `execution_result`, `execution_status` | `send_reroute_notification`, `generate_execution_report` |
 
 ---
 
-## 🛠️ Technology Stack
-
-- **Core Framework**: LangGraph & LangChain (v0.3+)
-- **Validation**: Pydantic Settings & Pydantic v2
-- **Logging**: Structlog (JSON structured logs)
-- **Retry Policy**: Tenacity (Sync/Async exponential backoff with random jitter)
-- **Testing**: pytest & pytest-cov (80%+ code coverage)
-- **Visualisations**: Matplotlib (dual-axis cost/performance charting)
-- **LLM Platforms**: OpenAI API (GPT-4o) & Groq API (Qwen3-8b)
-
----
-
-## ⚙️ Installation & Configuration
+## ⚙️ Installation & Environment Setup
 
 ### 1. Prerequisites
-Ensure Python 3.10+ is installed.
+Ensure Python 3.10+ is installed on your system.
 
-### 2. Clone and Install Dependencies
+### 2. Installation
 ```bash
 git clone https://github.com/Prasannaganesann/AI-Research-Assessment.git
-cd autonomous-logistics-agent
+cd AI-Research-Assessment
 pip install -r requirements.txt
 pip install pytest-cov matplotlib langgraph -q
 ```
 
-### 3. Configure Environment Variables
-Create a `.env` file in the root directory (based on `.env.example`):
+### 3. Quick Start (Run Immediately)
+```bash
+# Clone, install, and execute a single test run right out of the box:
+git clone https://github.com/Prasannaganesann/AI-Research-Assessment.git
+cd AI-Research-Assessment
+pip install -r requirements.txt
+copy .env.example .env
+python main.py
+```
+
+### 4. Environment Variables Configuration
+To run live API connections, copy `.env.example` to a new `.env` file in the root directory and update the credentials:
 ```env
+# API Keys (Provide your own to run live; defaults simulate mock runs)
 OPENAI_API_KEY=sk-proj-...
 GROQ_API_KEY=gsk_...
 
-# Model Selection
+# Model configuration
 OPENAI_MODEL=gpt-4o
-GROQ_MODEL=llama3-8b-8192  # or qwen/qwen3-8b
+GROQ_MODEL=qwen/qwen3-8b
 
 # Execution Settings
 LOG_LEVEL=WARNING
@@ -121,19 +146,24 @@ REQUEST_TIMEOUT=30.0
 ENABLE_TRAJECTORY_LOGGING=true
 ```
 
+- **How to Create `.env`**: Simply run `copy .env.example .env` (Windows) or `cp .env.example .env` (macOS/Linux) and fill in your keys.
+- **Required API Keys**: `OPENAI_API_KEY` (for closed-source evaluation) and `GROQ_API_KEY` (for open-source evaluation).
+- **Default Models**: `gpt-4o` is configured as the default closed-source model. `qwen/qwen3-8b` is configured as the default open-source model.
+- **Switching Models**: To test other models, change the `OPENAI_MODEL` or `GROQ_MODEL` variables inside `.env`. You can also override the active execution model directly using the CLI flag `--model <model_name>` at runtime.
+
 ---
 
 ## 🚀 Running the Project
 
 ### Running a Single Reroute Execution
-Execute the default shipment alert scenario using GPT-4o:
+Execute the default shipment alert scenario using the default model (GPT-4o):
 ```bash
 python main.py
 ```
 
-To run using Qwen3 via Groq:
+To run using Qwen3-8B via Groq:
 ```bash
-python main.py --model llama3-8b-8192
+python main.py --model qwen/qwen3-8b
 ```
 
 To run with a custom shipment alert JSON:
@@ -142,13 +172,13 @@ python main.py --scenario tests/sample_scenario.json
 ```
 
 ### Running the Comparative Benchmark
-To run the full model evaluation benchmark suite (evaluating both models across 5 distinct logistics scenarios, outputting reports and charts):
+To run the model evaluation benchmarker (evaluating both GPT-4o and Qwen3-8B across 5 distinct logistics scenarios, outputting reports and performance charts):
 ```bash
 python main.py --benchmark
 ```
 
-### Running Tests
-To verify all modules and run the pytest suite with coverage:
+### Running Tests & Coverage
+To run the pytest suite and generate a code coverage report:
 ```bash
 pytest
 ```
@@ -170,7 +200,7 @@ Rather than just checking if the final route matches a key, this system evaluate
 
 Running the comparative benchmark highlights key trade-offs between closed-source and open-source models:
 
-| Metric | GPT-4o | Qwen3-8b (via Groq) |
+| Metric | GPT-4o | Qwen3-8B (via Groq) |
 |---|---|---|
 | **Composite Score** | **94.8%** | **78.4%** |
 | **Tool Calling Accuracy** | 100.0% | 85.0% |
@@ -179,14 +209,14 @@ Running the comparative benchmark highlights key trade-offs between closed-sourc
 | **Average Latency** | 2.5s / step | **0.4s / step** |
 | **Cost per 100 Runs** | $0.76 USD | **$0.015 USD** (50x cheaper) |
 
-*Conclusion*: GPT-4o is the ideal choice for **critical, high-value, or complex hazard shipments** due to its flawless reasoning and retry behaviors. Qwen3 via Groq offers an incredibly fast and cost-effective alternative (50x cheaper, sub-second latency) for **standard, low-priority shipments** where simple rerouting is sufficient.
+*Conclusion*: GPT-4o is the ideal choice for **critical, high-value, or complex hazard shipments** due to its flawless reasoning and retry behaviors. Qwen3-8B via Groq offers an incredibly fast and cost-effective alternative (50x cheaper, sub-second latency) for **standard, low-priority shipments** where simple rerouting is sufficient.
 
 ---
 
 ## 📂 Repository Structure
 
 ```
-autonomous-logistics-agent/
+AI-Research-Assessment/
 ├── agents/                       # Single-responsibility agent nodes
 │   ├── __init__.py               # Package exports
 │   ├── base_agent.py             # Abstract base agent framework
