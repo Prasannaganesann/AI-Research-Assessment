@@ -15,36 +15,30 @@ Usage
     # Single run with the primary model (set in .env)
     python main.py
 
-    # Full comparative benchmark (both models, N scenarios)
+    # Full comparative benchmark (both models, 5 scenarios)
     python main.py --benchmark
 
     # Run with a specific scenario file
     python main.py --scenario scenarios/port_closure.json
 
-CLI Arguments
--------------
-    --benchmark     Run full model comparison evaluation
-    --scenario PATH Path to a custom telemetry alert JSON file
-    --model MODEL   Override model from .env (e.g. gpt-4o, qwen/qwen3-8b)
-    --verbose       Enable DEBUG-level logging
+    # Run with a specific model override
+    python main.py --model qwen/qwen3-8b
 """
 
 from __future__ import annotations
 
 import argparse
 import sys
+import json
 from pathlib import Path
 
-# ---------------------------------------------------------------------------
 # Ensure project root is on sys.path when run directly
-# ---------------------------------------------------------------------------
 sys.path.insert(0, str(Path(__file__).parent))
 
 from config.settings import get_settings
 from utils.logger import configure_logging, get_logger
-from graphs.logistics_graph import build_logistics_graph
-from evaluation.model_benchmarker import ModelBenchmarker
-from evaluation.report_generator import ReportGenerator
+from graphs import build_logistics_graph, create_initial_state, DEFAULT_SCENARIO
+from evaluation import ModelBenchmarker, ReportGenerator, get_benchmark_scenarios
 
 
 def parse_args() -> argparse.Namespace:
@@ -70,7 +64,7 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default=None,
         metavar="MODEL",
-        help="Override the model from .env (e.g. gpt-4o).",
+        help="Override the model from .env (e.g. gpt-4o, qwen/qwen3-8b).",
     )
     parser.add_argument(
         "--verbose",
@@ -88,40 +82,28 @@ def run_single(
 ) -> None:
     """
     Execute a single end-to-end logistics rerouting run.
-
-    Parameters
-    ----------
-    settings:
-        Loaded AppSettings instance.
-    logger:
-        Configured structlog logger.
-    model_override:
-        If provided, overrides the closed-source model name from settings.
-    scenario_path:
-        Optional path to a JSON telemetry alert. Defaults to built-in scenario.
     """
-    from graphs.logistics_graph import build_logistics_graph, DEFAULT_SCENARIO
-
     model_name = model_override or settings.closed_source_model
     logger.info("starting_single_run", model=model_name)
 
     graph = build_logistics_graph(model_name=model_name, settings=settings)
 
     if scenario_path:
-        import json
         telemetry_alert = json.loads(scenario_path.read_text())
         logger.info("loaded_custom_scenario", path=str(scenario_path))
     else:
         telemetry_alert = DEFAULT_SCENARIO
         logger.info("using_default_scenario")
 
-    result = graph.invoke({"telemetry_alert": telemetry_alert})
+    # Correct initial state generation (prevents missing key crashes)
+    initial_state = create_initial_state(telemetry_alert, model_name=model_name)
+    result = graph.invoke(initial_state)
 
     logger.info(
         "run_complete",
         model=model_name,
         status=result.get("execution_status", "unknown"),
-        route=result.get("selected_route", {}).get("carrier", "N/A"),
+        route=result.get("selected_route", {}).carrier if result.get("selected_route") else "N/A",
     )
 
     print("\n" + "=" * 60)
@@ -129,52 +111,61 @@ def run_single(
     print("=" * 60)
     print(f"  Model       : {model_name}")
     print(f"  Status      : {result.get('execution_status', 'unknown')}")
-    print(f"  New Carrier : {result.get('selected_route', {}).get('carrier', 'N/A')}")
-    print(f"  New Route   : {result.get('selected_route', {}).get('route_id', 'N/A')}")
-    print(f"  ETA Delta   : {result.get('selected_route', {}).get('eta_delta_hours', 'N/A')}h")
+    if result.get("selected_route"):
+        route = result["selected_route"]
+        print(f"  New Carrier : {route.carrier}")
+        print(f"  New Route   : {route.route_id}")
+        print(f"  Cost (USD)  : ${route.estimated_cost_usd:,.2f}")
+        print(f"  ETA Delta   : {route.eta_delta_hours:+.1f}h")
+    else:
+        print("  New Route   : N/A (Escalated or Failed)")
+    if result.get("execution_result"):
+        res = result["execution_result"]
+        print(f"  Confirmation: {res.confirmation_number or 'N/A'}")
+        print(f"  Notified Ops: {res.notification_sent}")
     print("=" * 60 + "\n")
 
 
 def run_benchmark(settings, logger) -> None:
     """
     Run the full comparative benchmarking pipeline.
-
-    Executes N scenarios for each model (closed-source + open-source),
-    captures trajectory snapshots, computes aggregate metrics, and
-    writes a structured report with charts to the reports/ directory.
-
-    Parameters
-    ----------
-    settings:
-        Loaded AppSettings instance.
-    logger:
-        Configured structlog logger.
     """
+    closed_model = settings.closed_source_model
+    open_model = settings.open_source_model
+    scenarios = get_benchmark_scenarios()
+
     logger.info(
         "starting_benchmark",
-        closed_source_model=settings.closed_source_model,
-        open_source_model=settings.open_source_model,
-        scenarios=settings.eval_scenarios,
+        closed_source_model=closed_model,
+        open_source_model=open_model,
+        scenarios_count=len(scenarios),
     )
 
-    benchmarker = ModelBenchmarker(settings=settings)
-    results = benchmarker.run_all()
+    benchmarker = ModelBenchmarker(output_dir="reports")
 
-    reporter = ReportGenerator(results=results, settings=settings)
-    reporter.generate()
+    # Run for both models
+    print(f"--- Running Benchmarks for {closed_model} ---")
+    closed_results = benchmarker.run_benchmark_for_model(closed_model, scenarios, dry_run=False)
 
-    logger.info("benchmark_complete", output_dir=settings.eval_output_dir)
-    print(f"\n✅ Benchmark complete. Reports written to: {settings.eval_output_dir}/\n")
+    print(f"--- Running Benchmarks for {open_model} ---")
+    open_results = benchmarker.run_benchmark_for_model(open_model, scenarios, dry_run=False)
+
+    results = {
+        closed_model: closed_results,
+        open_model: open_results,
+    }
+
+    # Generate comparative report
+    reporter = ReportGenerator(output_dir="reports")
+    md_report = reporter.generate_markdown_report(results)
+
+    logger.info("benchmark_complete", output_dir="reports")
+    print("\n✅ Benchmark complete. Reports written to: reports/\n")
 
 
 def main() -> int:
     """
     Application entry point.
-
-    Returns
-    -------
-    int
-        Exit code: 0 for success, 1 for failure.
     """
     args = parse_args()
     settings = get_settings()
