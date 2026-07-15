@@ -915,22 +915,38 @@ class GraphState(TypedDict, total=False):
     parallel branches (if any) are correctly accumulated.
     """
 
-    # ⑨ Evaluation metadata  (updated incrementally by each agent)
+    # ⑨ Evaluation metadata  (Annotated with operator.add — LangGraph accumulates
+    #    across agent nodes automatically; each agent returns ONLY its own count)
     # -----------------------------------------------------------------------
-    total_tool_calls: int
-    """Running total of tool calls made across all agent nodes in this run."""
+    total_tool_calls: Annotated[int, operator.add]
+    """
+    Cumulative tool calls across all agent nodes.
+    Each agent returns only its own step's count; operator.add accumulates.
+    """
 
-    successful_tool_calls: int
-    """Running total of tool calls that returned a successful result."""
+    successful_tool_calls: Annotated[int, operator.add]
+    """
+    Cumulative successful tool calls across all agent nodes.
+    Each agent returns only its own step's successful count.
+    """
 
-    total_prompt_tokens: int
-    """Cumulative prompt token count across all LLM calls in this run."""
+    total_prompt_tokens: Annotated[int, operator.add]
+    """
+    Cumulative LLM prompt tokens across all agent nodes.
+    Each agent returns only its own step's prompt token count.
+    """
 
-    total_completion_tokens: int
-    """Cumulative completion token count across all LLM calls in this run."""
+    total_completion_tokens: Annotated[int, operator.add]
+    """
+    Cumulative LLM completion tokens across all agent nodes.
+    Each agent returns only its own step's completion token count.
+    """
 
-    total_cost_usd: float
-    """Cumulative estimated API cost in USD across all LLM calls in this run."""
+    total_cost_usd: Annotated[float, operator.add]
+    """
+    Cumulative LLM API cost in USD across all agent nodes.
+    Each agent returns only its own step's cost; operator.add accumulates.
+    """
 
     start_time_utc: str
     """

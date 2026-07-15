@@ -13,8 +13,19 @@ and computes aggregate metrics:
     - Token-based cost estimation
     - Final output quality score
 
-Modules:
-    - trajectory_evaluator : Core snapshot capture + metric computation
-    - model_benchmarker    : Orchestrates multi-scenario runs per model
-    - report_generator     : Produces markdown tables + matplotlib charts
+Classes:
+    - TrajectoryEvaluator : Core snapshot analysis and scoring engine
+    - ModelBenchmarker    : Orchestrates multiple scenario runs for models
+    - ReportGenerator     : Aggregates results into Markdown reports and charts
 """
+
+from evaluation.trajectory_evaluator import TrajectoryEvaluator
+from evaluation.model_benchmarker import ModelBenchmarker, get_benchmark_scenarios
+from evaluation.report_generator import ReportGenerator
+
+__all__ = [
+    "TrajectoryEvaluator",
+    "ModelBenchmarker",
+    "get_benchmark_scenarios",
+    "ReportGenerator",
+]
