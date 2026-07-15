@@ -127,7 +127,6 @@ from typing import Any, Literal
 
 from langgraph.graph import END, START, StateGraph
 
-from agents import DecisionAgent, ExecutionAgent, PlannerAgent, ResearchAgent
 from config.settings import AppSettings, get_settings
 from graphs.state import DEFAULT_SCENARIO, GraphState, ShipmentAlert
 from utils.logger import get_logger
@@ -442,6 +441,11 @@ def build_logistics_graph(
     _model = model_name or cfg.closed_source_model
 
     # 1. Instantiate agents (shared across retries — stateless callables)
+    from agents.planner_agent import PlannerAgent
+    from agents.research_agent import ResearchAgent
+    from agents.decision_agent import DecisionAgent
+    from agents.execution_agent import ExecutionAgent
+
     planner   = PlannerAgent(settings=cfg)
     research  = ResearchAgent(settings=cfg)
     decision  = DecisionAgent(settings=cfg)

@@ -570,7 +570,7 @@ class CarrierOption(BaseModel):
         (LLM) provides nuanced judgement on top of this numeric ranking.
         """
         if not self.is_viable:
-            return -1.0
+            return -999999.0
         return (
             self.reliability_score
             - (max(0.0, self.eta_delta_hours) * 0.05)

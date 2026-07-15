@@ -107,14 +107,14 @@ SHIPMENT DETAILS:
 {shipment_block}
 
 AFTER ALL TOOL CALLS, respond ONLY with this JSON (no markdown):
-{
+{{
   "reasoning": "<brief summary of what you found and which carriers are viable>",
   "research_summary": "<1-2 sentence summary for the ops report>",
   "viable_carrier_ids": ["CARRIER-XX", ...],
   "recommended_mode": "AIR|SEA|MULTIMODAL",
   "total_carriers_queried": <int>,
   "total_viable": <int>
-}"""
+}}"""
 
 
 # ---------------------------------------------------------------------------

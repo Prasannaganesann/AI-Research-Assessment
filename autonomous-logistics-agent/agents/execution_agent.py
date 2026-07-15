@@ -122,13 +122,13 @@ Step 2: Call generate_execution_report with ALL the metrics above.
 Step 3: Respond with a JSON confirmation summary.
 
 After all tool calls, respond ONLY with this JSON (no markdown):
-{
+{{
   "reasoning": "<brief confirmation of actions taken>",
   "notification_sent": <true|false>,
   "report_generated": <true|false>,
   "final_status": "completed|failed",
   "summary": "<one sentence ops summary>"
-}"""
+}}"""
 
 
 # ---------------------------------------------------------------------------

@@ -108,7 +108,7 @@ SHIPMENT CONTEXT:
   Deadline       : {deadline}
 
 After all tool calls, respond ONLY with this JSON (no markdown):
-{
+{{
   "reasoning": "<step-by-step evaluation of the top candidates, 4-6 sentences>",
   "selected_carrier_id": "CARRIER-XX",
   "selected_route_id": "route-id-string",
@@ -116,7 +116,7 @@ After all tool calls, respond ONLY with this JSON (no markdown):
   "confidence_score": <float 0.0-1.0>,
   "requires_human_approval": <true|false>,
   "alternatives_considered": <int>
-}"""
+}}"""
 
 
 # ---------------------------------------------------------------------------
